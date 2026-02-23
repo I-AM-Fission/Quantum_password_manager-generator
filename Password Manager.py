@@ -147,6 +147,7 @@ class QuantumPasswordGUI(ctk.CTk):
         self.unlock.configure(fg_color=self.COL_BG)
         self.unlock.grab_set()
         self.unlock.grid_columnconfigure(0, weight=1)
+        self.unlock.protocol("WM_DELETE_WINDOW", self.destroy)
 
         ctk.CTkLabel(self.unlock, text="Enter Master Password", font=ctk.CTkFont(size=18, weight="bold"), text_color=self.COL_TEXT).grid(row=0, column=0, padx=18, pady=(20, 10), sticky="w")
         ctk.CTkLabel(self.unlock, text="Creates vault.enc if it doesn't exist.", font=ctk.CTkFont(size=12), text_color=self.COL_MUTED).grid(row=1, column=0, padx=18, pady=(0, 12), sticky="w")
