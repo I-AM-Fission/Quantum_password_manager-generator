@@ -1,6 +1,6 @@
 # Quantum Password Manager 🔐⚛️
 
-A modern Python password manager that combines real quantum randomness with strong local encryption.
+A Python password manager that combines real quantum randomness with strong local encryption.
 
 Generate high-entropy passwords using IBM Quantum hardware and store them securely in an encrypted local vault.
 
@@ -105,14 +105,4 @@ Vault.py
 vault.enc      (generated automatically)
 api_key.json
 ```
-
----
-
-## ⚠️ Important Notes
-
-- 🔑 Your master password is never stored.
-- ❌ If you forget it, the vault cannot be recovered.
-- 🛡 All encryption occurs locally.
-- ⚛️ Quantum randomness improves entropy but does not replace classical cryptographic standards.
-
 
