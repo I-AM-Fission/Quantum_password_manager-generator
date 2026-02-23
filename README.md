@@ -1,55 +1,66 @@
-# Quantum Password Manager 🔐⚛️
+# Quantum Password Manager
 
-A Python password manager that combines real quantum randomness with strong local encryption.
+A Python-based password manager that uses IBM Quantum hardware to generate high-entropy passwords and stores them securely in an encrypted local vault.
 
-Generate high-entropy passwords using IBM Quantum hardware and store them securely in an encrypted local vault.
-
----
-
-## 🚀 Features
-
-- ⚛️ **Quantum-generated passwords** (IBM QPU backend)
-- 🎛 **Adjustable password length** (8–64 characters)
-- 🔤 **Optional symbols toggle**
-- 📋 **One-click copy to clipboard**
-- 🔐 **Encrypted local vault** (`vault.enc`)
-- 🧠 **Memory-hard key derivation (scrypt)**
-- 🗂 **Save & view entries** (site, username, password)
-- 🔍 **Vault search**
-- 🌙 **Modern dark UI (CustomTkinter)**
+This project combines quantum-generated randomness with modern encryption to create a secure and practical desktop password manager.
 
 ---
 
-## 🔐 Security Overview
+## Overview
+
+The application generates passwords using real quantum measurements from IBM Quantum backends. Those measurements are processed to remove statistical bias and then mapped into a secure character set.
+
+All saved credentials are stored locally in an encrypted vault file.
+
+No credential data is transmitted or stored remotely.
+
+---
+
+## Features
+
+- Quantum-generated password generation (IBM QPU backend)
+- Adjustable password length (8–64 characters)
+- Optional symbol inclusion
+- One-click clipboard copy
+- Encrypted local vault (`vault.enc`)
+- Memory-hard key derivation (scrypt)
+- Save and view entries (site, username, password)
+- Search functionality
+- Dark-themed desktop UI (CustomTkinter)
+
+---
+
+## Security Design
 
 ### Password Generation
-1. 1-qubit Hadamard circuit runs on IBM Quantum hardware  
-2. Raw bitstream collected  
-3. Von Neumann extraction removes bias  
-4. Bits mapped uniformly to character set  
-5. Fisher–Yates shuffle ensures distribution  
 
-A 20-character password from the default 69-character alphabet provides approximately **122 bits of entropy**.
+1. A 1-qubit Hadamard circuit is executed on IBM Quantum hardware  
+2. Measurement results are collected as a raw bitstream  
+3. Von Neumann extraction removes statistical bias  
+4. Bits are mapped uniformly to a selected character set  
+5. Fisher–Yates shuffle ensures proper distribution  
+
+A 20-character password generated from the default 69-character alphabet provides approximately 122 bits of entropy.
 
 ---
 
 ### Vault Encryption
 
-- 🔒 **AES-256-GCM** (authenticated encryption)
-- 🧠 **scrypt KDF** (memory-hard, brute-force resistant)
-- ⚛️ **Quantum-generated salt** (fallback to OS CSPRNG)
-- 💾 Stored as encrypted binary file: `vault.enc`
+- AES-256-GCM authenticated encryption  
+- scrypt key derivation (memory-hard)  
+- Quantum-generated salt (fallback to OS cryptographic randomness)  
+- Encrypted binary storage file: `vault.enc`  
 
-Vault security depends entirely on your **master password strength**.
+The security of the vault depends entirely on the strength of the master password.
 
-There is **no recovery mechanism** if the master password is lost.
+There is no recovery mechanism if the master password is lost.
 
 ---
 
-## 🛠 Requirements
+## Requirements
 
 ### Python
-- Python **3.10+** recommended
+- Python 3.10 or newer recommended
 
 ### Install Dependencies
 
@@ -58,14 +69,14 @@ pip install customtkinter cryptography qiskit qiskit-ibm-runtime
 ```
 
 Libraries used:
-- `customtkinter`
-- `cryptography`
-- `qiskit`
-- `qiskit-ibm-runtime`
+- customtkinter  
+- cryptography  
+- qiskit  
+- qiskit-ibm-runtime  
 
 ---
 
-## 🔑 IBM Quantum Setup
+## IBM Quantum Setup
 
 1. Create a file named:
 
@@ -81,14 +92,14 @@ api_key.json
 }
 ```
 
-3. Launch the Password Manager.py and click **Load Token**.
+3. Launch the application and click **Load Token**.
 
-Get your API token from:
+IBM Quantum API tokens can be obtained at:
 https://quantum.ibm.com/
 
 ---
 
-## ▶️ Run
+## Running the Application
 
 ```bash
 python Password Manager.py
@@ -96,7 +107,7 @@ python Password Manager.py
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 Password Manager.py
@@ -106,3 +117,10 @@ vault.enc      (generated automatically)
 api_key.json
 ```
 
+---
+
+## Notes
+
+- The master password is never stored.
+- If it is forgotten, the vault cannot be recovered.
+- All encryption operations occur locally.
