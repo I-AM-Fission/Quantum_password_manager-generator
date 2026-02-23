@@ -2,13 +2,13 @@
 
 A Python-based password manager that uses IBM Quantum hardware to generate high-entropy passwords and stores them securely in an encrypted local vault.
 
-This project combines quantum-generated randomness with modern encryption to create a secure and practical desktop password manager.
+This project combines quantum-generated randomness with modern encryption to create a secure desktop password manager.
 
 ---
 
 ## Overview
 
-The application generates passwords using real quantum measurements from IBM Quantum backends. Those measurements are processed to remove statistical bias and then mapped into a secure character set.
+The application generates passwords using quantum measurements from IBM Quantum backends. Those measurements are processed to remove statistical bias and then mapped into a secure character set.
 
 All saved credentials are stored locally in an encrypted vault file.
 
