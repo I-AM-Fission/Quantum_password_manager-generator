@@ -1,5 +1,6 @@
 import os
 import json
+import uuid
 from pathlib import Path
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
@@ -55,10 +56,35 @@ def save_vault(master_password, vault):
 
 def add_entry(master_password, site, username, password):
     vault = load_vault(master_password)
-    vault.setdefault("entries", [])
-    vault["entries"].append({"site": site, "username": username, "password": password})
+    entry = {
+        "id": uuid.uuid4().hex,
+        "site": site,
+        "username": username,
+        "password": password
+    }
+    vault["entries"].append(entry)
     save_vault(master_password, vault)
+    return entry["id"]
 
 def get_entries(master_password):
     vault = load_vault(master_password)
     return vault.get("entries", [])
+
+def delete_entry(master_password, entry_id):
+    vault = load_vault(master_password)
+    before = len(vault["entries"])
+    vault["entries"] = [e for e in vault["entries"] if e.get("id") != entry_id]
+    if len(vault["entries"]) == before:
+        raise ValueError("entry not found")
+    save_vault(master_password, vault)
+
+def update_entry(master_password, entry_id, site, username, password):
+    vault = load_vault(master_password)
+    for e in vault["entries"]:
+        if e.get("id") == entry_id:
+            e["site"] = site
+            e["username"] = username
+            e["password"] = password
+            save_vault(master_password, vault)
+            return
+    raise ValueError("entry not found")

@@ -1,7 +1,8 @@
 import threading
+import time
 import customtkinter as ctk
 from Quantum_Protected_Password_Generator import generate_quantum_password, set_token
-from Vault import load_vault, save_vault, get_entries, add_entry
+from Vault import load_vault, save_vault, get_entries, add_entry, delete_entry, update_entry
 
 class QuantumPasswordGUI(ctk.CTk):
     def __init__(self):
@@ -26,13 +27,28 @@ class QuantumPasswordGUI(ctk.CTk):
         self.configure(fg_color=self.COL_BG)
 
         self.master_password = None
-
+        self.auto_lock_seconds = 180
+        self.last_activity = time.monotonic()
+        self.bind_all("<KeyPress>", self._touch_activity)
+        self.bind_all("<Button>", self._touch_activity)
+        self.after(2000, self._auto_lock_check)
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
 
         self.header = ctk.CTkFrame(self, fg_color="#2A2142", corner_radius=0)
         self.header.grid(row=0, column=0, sticky="nsew")
         self.header.grid_columnconfigure(0, weight=1)
+
+        self.lock_btn = ctk.CTkButton(
+            self.header,
+            text="Lock",
+            height=34,
+            fg_color="#162235",
+            hover_color="#1B2B44",
+            text_color=self.COL_TEXT,
+            command=self.lock_vault
+        )
+        self.lock_btn.grid(row=0, column=1, padx=22, pady=16, sticky="e")
 
         ctk.CTkLabel(
             self.header,
@@ -283,23 +299,147 @@ class QuantumPasswordGUI(ctk.CTk):
             return
 
         for i, e in enumerate(filtered):
-            card = ctk.CTkFrame(self.scroll, fg_color="#0B1220", corner_radius=14, border_width=1, border_color=self.COL_BORDER)
+            card = ctk.CTkFrame(self.scroll, fg_color="#0B1220", corner_radius=14, border_width=1,
+                                border_color=self.COL_BORDER)
             card.grid(row=i, column=0, sticky="ew", pady=8)
             card.grid_columnconfigure(0, weight=1)
 
             site = e.get("site", "")
             username = e.get("username", "")
             password = e.get("password", "")
+            entry_id = e.get("id", "")
 
-            ctk.CTkLabel(card, text=site, font=ctk.CTkFont(size=14, weight="bold"), text_color=self.COL_TEXT).grid(row=0, column=0, padx=14, pady=(12, 2), sticky="w")
-            ctk.CTkLabel(card, text=username, font=ctk.CTkFont(size=12), text_color=self.COL_MUTED).grid(row=1, column=0, padx=14, pady=(0, 10), sticky="w")
+            ctk.CTkLabel(card, text=site, font=ctk.CTkFont(size=14, weight="bold"), text_color=self.COL_TEXT).grid(
+                row=0, column=0, padx=14, pady=(12, 2), sticky="w")
+            ctk.CTkLabel(card, text=username, font=ctk.CTkFont(size=12), text_color=self.COL_MUTED).grid(row=1,
+                                                                                                         column=0,
+                                                                                                         padx=14,
+                                                                                                         pady=(0, 10),
+                                                                                                         sticky="w")
 
             actions = ctk.CTkFrame(card, fg_color="transparent")
             actions.grid(row=2, column=0, padx=14, pady=(0, 12), sticky="ew")
-            actions.grid_columnconfigure((0, 1), weight=1)
+            actions.grid_columnconfigure((0, 1, 2, 3), weight=1)
 
-            ctk.CTkButton(actions, text="Copy Password", height=34, fg_color="#162235", hover_color="#1B2B44", text_color=self.COL_TEXT, command=lambda p=password: self.copy_text(p)).grid(row=0, column=0, padx=(0, 8), sticky="ew")
-            ctk.CTkButton(actions, text="Copy Username", height=34, fg_color="#162235", hover_color="#1B2B44", text_color=self.COL_TEXT, command=lambda u=username: self.copy_text(u)).grid(row=0, column=1, padx=(8, 0), sticky="ew")
+            ctk.CTkButton(
+                actions,
+                text="Copy Pass",
+                height=34,
+                fg_color="#162235",
+                hover_color="#1B2B44",
+                text_color=self.COL_TEXT,
+                command=lambda p=password: self.copy_text(p)
+            ).grid(row=0, column=0, padx=(0, 8), sticky="ew")
+
+            ctk.CTkButton(
+                actions,
+                text="Copy User",
+                height=34,
+                fg_color="#162235",
+                hover_color="#1B2B44",
+                text_color=self.COL_TEXT,
+                command=lambda u=username: self.copy_text(u)
+            ).grid(row=0, column=1, padx=(8, 8), sticky="ew")
+
+            ctk.CTkButton(
+                actions,
+                text="Edit",
+                height=34,
+                fg_color="#162235",
+                hover_color="#1B2B44",
+                text_color=self.COL_TEXT,
+                command=lambda eid=entry_id: self.open_edit_modal(eid)
+            ).grid(row=0, column=2, padx=(8, 8), sticky="ew")
+
+            ctk.CTkButton(
+                actions,
+                text="Delete",
+                height=34,
+                fg_color="#2A1A1A",
+                hover_color="#3A2020",
+                text_color="white",
+                command=lambda eid=entry_id: self.delete_entry_ui(eid)
+            ).grid(row=0, column=3, padx=(8, 0), sticky="ew")
+
+    def save_edit(self, entry_id):
+        site = self.edit_site.get().strip()
+        username = self.edit_user.get().strip()
+        password = self.edit_pass.get().strip()
+        if not site or not username or not password:
+            self.set_status("Site, username, and password are required.", self.COL_WARN)
+            return
+        try:
+            update_entry(self.master_password, entry_id, site, username, password)
+            self.edit_win.destroy()
+            self.refresh_vault_view()
+            self.set_status("Entry updated.", self.COL_GREEN)
+        except Exception as e:
+            self.set_status(f"Update failed: {e}", self.COL_DANGER)
+
+    def open_edit_modal(self, entry_id):
+        if not self.master_password:
+            self.set_status("Unlock vault first.", self.COL_WARN)
+            return
+
+        entries = get_entries(self.master_password)
+        target = None
+        for e in entries:
+            if e.get("id") == entry_id:
+                target = e
+                break
+        if not target:
+            self.set_status("Entry not found.", self.COL_WARN)
+            return
+
+        self.edit_win = ctk.CTkToplevel(self)
+        self.edit_win.title("Edit Entry")
+        self.edit_win.geometry("420x320")
+        self.edit_win.resizable(False, False)
+        self.edit_win.configure(fg_color=self.COL_BG)
+        self.edit_win.grab_set()
+        self.edit_win.grid_columnconfigure(0, weight=1)
+
+        self.edit_site = ctk.StringVar(value=target.get("site", ""))
+        self.edit_user = ctk.StringVar(value=target.get("username", ""))
+        self.edit_pass = ctk.StringVar(value=target.get("password", ""))
+
+        ctk.CTkLabel(self.edit_win, text="Edit Entry", font=ctk.CTkFont(size=18, weight="bold"),
+                     text_color=self.COL_TEXT).grid(row=0, column=0, padx=18, pady=(18, 10), sticky="w")
+
+        ctk.CTkEntry(self.edit_win, textvariable=self.edit_site, height=40, fg_color="#0B1220",
+                     border_color=self.COL_BORDER, text_color=self.COL_TEXT).grid(row=1, column=0, padx=18,
+                                                                                  pady=(0, 10), sticky="ew")
+        ctk.CTkEntry(self.edit_win, textvariable=self.edit_user, height=40, fg_color="#0B1220",
+                     border_color=self.COL_BORDER, text_color=self.COL_TEXT).grid(row=2, column=0, padx=18,
+                                                                                  pady=(0, 10), sticky="ew")
+        ctk.CTkEntry(self.edit_win, textvariable=self.edit_pass, height=40, fg_color="#0B1220",
+                     border_color=self.COL_BORDER, text_color=self.COL_TEXT).grid(row=3, column=0, padx=18,
+                                                                                  pady=(0, 16), sticky="ew")
+
+        row = ctk.CTkFrame(self.edit_win, fg_color="transparent")
+        row.grid(row=4, column=0, padx=18, pady=(0, 16), sticky="ew")
+        row.grid_columnconfigure((0, 1), weight=1)
+
+        ctk.CTkButton(
+            row,
+            text="Save",
+            height=40,
+            fg_color=self.COL_PURPLE,
+            hover_color=self.COL_PURPLE_HOVER,
+            text_color="white",
+            command=lambda: self.save_edit(entry_id)
+        ).grid(row=0, column=0, padx=(0, 8), sticky="ew")
+
+        ctk.CTkButton(
+            row,
+            text="Cancel",
+            height=40,
+            fg_color="#162235",
+            hover_color="#1B2B44",
+            text_color=self.COL_TEXT,
+            command=self.edit_win.destroy
+        ).grid(row=0, column=1, padx=(8, 0), sticky="ew")
+
 
     def copy_text(self, text):
         if not text:
@@ -311,6 +451,37 @@ class QuantumPasswordGUI(ctk.CTk):
 
     def set_status(self, msg, color):
         self.status.configure(text=msg, text_color=color)
+
+    def delete_entry_ui(self, entry_id):
+        if not self.master_password:
+            self.set_status("Unlock vault first.", self.COL_WARN)
+            return
+        try:
+            delete_entry(self.master_password, entry_id)
+            self.refresh_vault_view()
+            self.set_status("Entry deleted.", self.COL_GREEN)
+        except Exception as e:
+            self.set_status(f"Delete failed: {e}", self.COL_DANGER)
+
+    def lock_vault(self):
+        self.master_password = None
+        self.password_var.set("")
+        self.site_var.set("")
+        self.user_var.set("")
+        self.set_status("Vault locked.", self.COL_WARN)
+        self.refresh_vault_view()
+        self.show_unlock_modal()
+
+    def _touch_activity(self, _event=None):
+        self.last_activity = time.monotonic()
+
+    def _auto_lock_check(self):
+        if self.master_password is not None:
+            idle = time.monotonic() - self.last_activity
+            if idle >= self.auto_lock_seconds:
+                self.lock_vault()
+                return
+        self.after(2000, self._auto_lock_check)
 
 if __name__ == "__main__":
     app = QuantumPasswordGUI()
